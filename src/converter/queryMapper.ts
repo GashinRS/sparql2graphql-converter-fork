@@ -28,10 +28,10 @@ export class QueryMapper {
     const results: [string, ResponseMapper][] = [];
 
     // Convert operation to tree
-    const tree = convertOperation(operation);
+    const trees = convertOperation(operation);
 
     // Expand the current tree into all possible trees (taking into account reverse predicates)
-    for (const possibleTree of this.schemaMapper.calculatePossibleTrees(tree)) {
+    for (const possibleTree of this.schemaMapper.calculatePossibleTrees(trees)) {
       getLogger().debug("Trying possible tree: ", JSON.stringify(possibleTree, null, 2));
       // Check if the schema supports the SPARQL query tree
       const fields = this.schemaMapper.supportsQuery(possibleTree);

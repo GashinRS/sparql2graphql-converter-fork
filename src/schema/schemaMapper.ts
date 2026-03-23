@@ -1,6 +1,6 @@
 import { buildSchema, getNamedType, GraphQLID, isScalarType, GraphQLNonNull } from "graphql";
 import { getCustomObjectTypes, getFieldPredicate, getSubscriptionType, getTypeIRI, valueFromLiteral } from "../utils/utils";
-import { Edge, SubscriptionType, TreeNode } from "../types";
+import { Edge, SubscriptionType, TreeNode, Trees } from "../types";
 import type * as RDF from "@rdfjs/types";
 import type { GraphQLArgument, GraphQLField, GraphQLObjectType } from "graphql";
 import { getLogger } from "../utils/logger";
@@ -127,19 +127,28 @@ export class SchemaMapper {
     return value;
   }
 
-  calculatePossibleTrees(root: TreeNode): TreeNode[] {
+  calculatePossibleTrees(trees: Trees): TreeNode[] {
+    // Collect edges from ALL roots
+    const edges: Edge[] = [];
+    for (const root of trees.roots) {
+      collectEdges(root, edges);
+    }
 
-    const edges = collectEdges(root);
-
+    // Generate all combinations of edge directions
     const combos = edges.reduce<Edge[][]>((combos, edge) => {
 
       const variants = this.edgeVariants(edge);
+
+      // If no valid mapping exists → entire combo invalid
       if (!variants.length) return [];
 
-      return combos.flatMap(c => variants.map(v => [...c, v]));
+      return combos.flatMap(c =>
+        variants.map(v => [...c, v])
+      );
 
     }, [[]]);
 
+    // Rebuild trees and filter only SINGLE ROOT ones
     return combos
       .map(edges => buildTrees(edges))
       .filter(t => t.roots.length === 1)

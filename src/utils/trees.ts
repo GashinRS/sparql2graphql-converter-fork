@@ -3,22 +3,18 @@ import { TreeNode, Edge, Trees } from "../types";
 
 const TYPE_PREDICATES = ["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"];
 
-export function convertOperation(operation: Algebra.Operation): TreeNode {
+export function convertOperation(operation: Algebra.Operation): Trees {
   // Extract patters from the operation
   const patterns = extractPatterns(operation);
 
   // Convert patterns to trees
   const trees = patternsToTrees(patterns);
 
-  // Currently only queries consisting of one tree are supported
-  if (trees.roots.length > 1) {
-    throw new Error(`Multiple entrypoints found: ${trees.roots.length}`);
-  }
   if (trees.roots.length <= 0) {
     throw new Error(`No entrypoints found`);
   }
 
-  return trees.roots[0]
+  return trees
 }
 
 function extractPatterns(op: Algebra.Operation): Algebra.Pattern[] {
