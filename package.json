@@ -4,6 +4,9 @@
   "description": "Convert SPARQL queries into GraphQL queries using a provided GraphQL schema and context.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "files": [
+    "build/"
+  ],
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "yarn build"
