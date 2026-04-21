@@ -32,6 +32,17 @@ type subscriptionType = "addition" | "deletion";
 
 export class SchemaMapper {
 
+  private static readonly DEFAULT_PREFIXES: [string, string][] = [
+    ["rdf",    "http://www.w3.org/1999/02/22-rdf-syntax-ns#"],
+    ["rdfs",   "http://www.w3.org/2000/01/rdf-schema#"],
+    ["owl",    "http://www.w3.org/2002/07/owl#"],
+    ["xsd",    "http://www.w3.org/2001/XMLSchema#"],
+    ["skos",   "http://www.w3.org/2004/02/skos/core#"],
+    ["dcterms","http://purl.org/dc/terms/"],
+    ["foaf",   "http://xmlns.com/foaf/0.1/"],
+    ["schema", "https://schema.org/"],
+  ];
+
   private subscriptionFields: Record<subscriptionType, FieldMapper[]> = {
     "addition": [],
     "deletion": []
@@ -39,11 +50,17 @@ export class SchemaMapper {
   private queryFields: FieldMapper[] = [];
 
   private readonly types = new Map<string, TypeMapper>();
+
   private readonly prefixes: [string, string][];
 
   constructor(schemaSource: string, private readonly context: Record<string, string>) {
 
-    this.prefixes = Object.entries(context);
+    const merged = new Map<string, string>(SchemaMapper.DEFAULT_PREFIXES);
+    for (const [prefix, iri] of Object.entries(context)) {
+      merged.set(prefix, iri);
+    }
+
+    this.prefixes = Array.from(merged.entries());
 
     schemaSource = `
       scalar BoxedLiteral
