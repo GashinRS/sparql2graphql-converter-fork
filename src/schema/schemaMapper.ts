@@ -409,8 +409,6 @@ export class RawRDFFieldMapper extends BaseFieldMapper {
 export class TypeFieldMapper extends BaseFieldMapper {
 
   private fieldTypeIRI: string;
-  private idArg?: GraphQLArgument;
-  private idField?: GraphQLField<any, any, any>;
 
   constructor(
     field: GraphQLField<any, any, any>,
@@ -424,19 +422,6 @@ export class TypeFieldMapper extends BaseFieldMapper {
     this.fieldTypeIRI = typeIRI
       ? schemaMapper.replaceSPARQLPrefix(typeIRI)
       : schemaMapper.toSPARQLContext(fieldType.name);
-
-    this.idArg = field.args.find(a =>
-      getNamedType(a.type) === GraphQLID && a.name === "id"
-    );
-
-    if (!this.idArg) {
-      this.idField = Object.values(fieldType.getFields())
-        .find(f => getNamedType(f.type) === GraphQLID && f.name === "id");
-    }
-  }
-
-  private id() {
-    return this.idArg?.name ?? this.idField?.name;
   }
 
   withType(type: RDF.Term) {
@@ -448,12 +433,8 @@ export class TypeFieldMapper extends BaseFieldMapper {
     return this.fieldTypeIRI === type.value;
   }
 
-  withSubject(subj: RDF.Term) {
-
-    if (subj.termType === "Variable")
-      return !this.idArg || !(this.idArg.type instanceof GraphQLNonNull);
-
-    return !!this.idArg || !!this.idField;
+  withSubject(_subj: RDF.Term) {
+    return true;
   }
 
   withPredicate(pred: string, node: TreeNode) {
@@ -480,18 +461,16 @@ export class TypeFieldMapper extends BaseFieldMapper {
 
     let query = this.field.name;
 
-    const id = this.id();
-
     if (Object.keys(node.children).length) {
 
       if (node.term.termType === "NamedNode")
-        query += `(${id}: "${node.term.value}")`;
+        query += `(id: "${node.term.value}")`;
 
       query += " { ";
 
       if (node.term.termType === "Variable") {
-        query += `${id} `;
-        responseMapper.addVarMapping(node.term.value, "ID", id);
+        query += `id `;
+        responseMapper.addVarMapping(node.term.value, "ID", "id");
       }
 
       for (const [pred, child] of Object.entries(node.children)) {
