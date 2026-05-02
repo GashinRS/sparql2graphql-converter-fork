@@ -356,6 +356,11 @@ export class ScalarFieldMapper extends BaseFieldMapper {
     else if (node.term.termType === "Literal")
       query += ` @filter(if: "${this.field.name}==${valueFromLiteral(node.term)}")`;
 
+    else if (node.term.termType === "NamedNode") {
+      query += ` @filter(if: "${this.field.name}=='${node.term.value}'")`;
+      responseMapper.addIDFilter(node.term.value);
+    }
+
     responseMapper.removeContext();
 
     return query.trim();

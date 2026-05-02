@@ -37,6 +37,10 @@ export class ResponseMapper {
     this.filterMap[this.getContext() + "__rawRDF"] = value;
   }
 
+  public addIDFilter(iri: string): void {
+    this.filterMap[this.getContext()] = { '@iri': iri };
+  }
+
   public dataToBindings(
     data: any,
     variables: RDF.Variable[],
@@ -109,19 +113,28 @@ export class ResponseMapper {
     // --- Filter resources based on filterMap ---
     for (const filterId of Object.keys(this.filterMap)) {
       const filterValue: RawRDF = this.filterMap[filterId];
-      const resourceValue = <RawRDF> resource[filterId];
+      const rawValue = resource[filterId];
 
-      if (filterValue['@id']) {
-        if (resourceValue['@id'] !== filterValue['@id']) {
+      if (filterValue['@iri']) {
+        // Plain IRI scalar comparison (from ScalarFieldMapper NamedNode branch)
+        if (rawValue !== filterValue['@iri']) {
+          return undefined;
+        }
+      } else {
+        const resourceValue = <RawRDF> rawValue;
+
+        if (filterValue['@id']) {
+          if (resourceValue['@id'] !== filterValue['@id']) {
+            // Doesn't match, skip resource
+            return undefined;
+          }
+        } else if (filterValue['@type'] && filterValue['@value'] && (
+          resourceValue['@value'] !== filterValue['@value'] ||
+            resourceValue['@type'] !== filterValue['@type']
+        )) {
           // Doesn't match, skip resource
           return undefined;
         }
-      } else if (filterValue['@type'] && filterValue['@value'] && (
-        resourceValue['@value'] !== filterValue['@value'] ||
-          resourceValue['@type'] !== filterValue['@type']
-      )) {
-        // Doesn't match, skip resource
-        return undefined;
       }
     }
 
