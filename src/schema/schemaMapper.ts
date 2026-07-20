@@ -268,8 +268,12 @@ interface FieldMapper {
   withPredicate(pred: string, node: TreeNode): boolean
   withType(type: RDF.Term): boolean
   withSubject(obj: RDF.Term): boolean
-  toQuery(node: TreeNode, responseMapper: ResponseMapper): string
+  toQuery(node: TreeNode, responseMapper: ResponseMapper, options?: QueryGenerationOptions): string
   rep(): object
+}
+
+interface QueryGenerationOptions {
+  pageSize?: number
 }
 
 abstract class BaseFieldMapper implements FieldMapper {
@@ -299,7 +303,11 @@ abstract class BaseFieldMapper implements FieldMapper {
   abstract withPredicate(pred: string, node: TreeNode): boolean;
   abstract withType(type: RDF.Term): boolean;
   abstract withSubject(obj: RDF.Term): boolean;
-  abstract toQuery(node: TreeNode, responseMapper: ResponseMapper): string;
+  abstract toQuery(
+    node: TreeNode,
+    responseMapper: ResponseMapper,
+    options?: QueryGenerationOptions,
+  ): string;
   abstract rep(): object;
 }
 
@@ -344,7 +352,7 @@ export class ScalarFieldMapper extends BaseFieldMapper {
 
   withType() { return false; }
 
-  toQuery(node: TreeNode, responseMapper: ResponseMapper) {
+  toQuery(node: TreeNode, responseMapper: ResponseMapper, _options?: QueryGenerationOptions) {
 
     responseMapper.addContext(this.field.name);
 
@@ -394,7 +402,7 @@ export class RawRDFFieldMapper extends BaseFieldMapper {
 
   withType() { return false; }
 
-  toQuery(node: TreeNode, responseMapper: ResponseMapper) {
+  toQuery(node: TreeNode, responseMapper: ResponseMapper, _options?: QueryGenerationOptions) {
 
     responseMapper.addContext(this.field.name);
 
@@ -477,17 +485,23 @@ export class TypeFieldMapper extends BaseFieldMapper {
     return true;
   }
 
-  toQuery(node: TreeNode, responseMapper: ResponseMapper) {
+  toQuery(node: TreeNode, responseMapper: ResponseMapper, options?: QueryGenerationOptions) {
 
     responseMapper.addContext(this.field.name);
 
     let query = this.field.name;
+    const args: string[] = [];
+
+    if (node.term.termType === "NamedNode")
+      args.push(`id: "${node.term.value}"`);
+
+    if (options?.pageSize !== undefined && this.field.args.some(arg => arg.name === "pageSize"))
+      args.push(`pageSize: ${options.pageSize}`);
+
+    if (args.length)
+      query += `(${args.join(", ")})`;
 
     if (Object.keys(node.children).length) {
-
-      if (node.term.termType === "NamedNode")
-        query += `(id: "${node.term.value}")`;
-
       query += " { ";
 
       if (node.term.termType === "Variable") {
@@ -513,8 +527,7 @@ export class TypeFieldMapper extends BaseFieldMapper {
       query += ` @filter(if: "${this.field.name}==${valueFromLiteral(node.term)}")`;
 
     } else if (node.term.termType === "NamedNode") {
-
-      query += `(id: "${node.term.value}") { id }`;
+      query += ` { id }`;
     }
 
     responseMapper.removeContext();

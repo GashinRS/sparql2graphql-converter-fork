@@ -8,9 +8,18 @@ import { SubscriptionType } from '../types';
 export class QueryMapper {
 
   private schemaMapper: SchemaMapper
+  private initialQueryPageSize: number
 
-  constructor(schema: string, context: Record<string, string>) {
+  constructor(
+    schema: string,
+    context: Record<string, string>,
+    initialQueryPageSize: number = configuredInitialQueryPageSize(),
+  ) {
+    if (!Number.isSafeInteger(initialQueryPageSize) || initialQueryPageSize <= 0) {
+      throw new RangeError(`Initial query page size must be a positive integer, got ${initialQueryPageSize}`);
+    }
     this.schemaMapper = new SchemaMapper(schema, context);
+    this.initialQueryPageSize = initialQueryPageSize;
     getLogger().debug("With Schema: ", JSON.stringify(this.schemaMapper.rep(), null, 2));
   }
 
@@ -40,7 +49,9 @@ export class QueryMapper {
       for (const field of fields) {
         try {
           const responseMapper = new ResponseMapper();
-          const query = field.toQuery(possibleTree, responseMapper);
+          const query = field.toQuery(possibleTree, responseMapper, {
+            pageSize: this.initialQueryPageSize,
+          });
           results.push([ `query { ${query} }`, responseMapper ]);
         } catch (err) {
           const error = err instanceof Error ? err : new Error(String(err))
@@ -79,4 +90,11 @@ export class QueryMapper {
 
     return results;
   }
+}
+
+function configuredInitialQueryPageSize(): number {
+  const rawValue = process.env.INITIAL_QUERY_PAGE_SIZE
+    ?? process.env.STATIC_CATCHUP_PAGE_SIZE
+    ?? "50000";
+  return Number(rawValue);
 }
