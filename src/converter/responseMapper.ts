@@ -8,6 +8,7 @@ export class ResponseMapper {
   private context: string[] = [];
   private varMap: Record<string, string> = {};
   private filterMap: Record<string, RawRDF> = {};
+  private idFilterMap: Record<string, string> = {};
   private typeMap: Record<string, string> = {};
 
   public addContext(ctx: string): void {
@@ -38,7 +39,7 @@ export class ResponseMapper {
   }
 
   public addIDFilter(iri: string): void {
-    this.filterMap[this.getContext()] = { '@iri': iri };
+    this.idFilterMap[this.getContext()] = iri;
   }
 
   public dataToBindings(
@@ -110,31 +111,29 @@ export class ResponseMapper {
     getLogger().debug("Resource: ", JSON.stringify(resource, null, 2));
     const bindings: Record<string, RDF.Term> = {};
 
+    // Plain GraphQL ID fields are strings, not RawRDF objects.
+    for (const [filterId, iri] of Object.entries(this.idFilterMap)) {
+      if (resource[filterId] !== iri) {
+        return undefined;
+      }
+    }
+
     // --- Filter resources based on filterMap ---
     for (const filterId of Object.keys(this.filterMap)) {
       const filterValue: RawRDF = this.filterMap[filterId];
-      const rawValue = resource[filterId];
+      const resourceValue = <RawRDF> resource[filterId];
 
-      if (filterValue['@iri']) {
-        // Plain IRI scalar comparison (from ScalarFieldMapper NamedNode branch)
-        if (rawValue !== filterValue['@iri']) {
-          return undefined;
-        }
-      } else {
-        const resourceValue = <RawRDF> rawValue;
-
-        if (filterValue['@id']) {
-          if (resourceValue['@id'] !== filterValue['@id']) {
-            // Doesn't match, skip resource
-            return undefined;
-          }
-        } else if (filterValue['@type'] && filterValue['@value'] && (
-          resourceValue['@value'] !== filterValue['@value'] ||
-            resourceValue['@type'] !== filterValue['@type']
-        )) {
+      if (filterValue['@id']) {
+        if (resourceValue['@id'] !== filterValue['@id']) {
           // Doesn't match, skip resource
           return undefined;
         }
+      } else if (filterValue['@type'] && filterValue['@value'] && (
+        resourceValue['@value'] !== filterValue['@value'] ||
+          resourceValue['@type'] !== filterValue['@type']
+      )) {
+        // Doesn't match, skip resource
+        return undefined;
       }
     }
 
