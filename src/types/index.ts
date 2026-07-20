@@ -21,7 +21,6 @@ export interface RawRDF {
   '@id'?: string;
   '@value'?: string;
   '@type'?: string;
-  '@iri'?: string;
 }
 
 export type Resource = Record<string, string | RawRDF>;
